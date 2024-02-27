@@ -1,0 +1,353 @@
+<html><head>
+
+
+    <!-- Add Bootstrap CSS link -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Add Bootstrap JavaScript and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
+    <style>
+        body {
+            margin: 40px;
+        }
+    </style>
+</head>
+
+<body><h2 id="introduzione">Introduzione</h2>
+<p>Il seguente documento illustra il funzionamento di un insieme di moduli Python utilizzati per l&#39;automazione del processo di generazione di tassonomia e regole linguistiche per ogni ramo della stessa a partire da un dominio generico come può essere &quot;Automotive&quot; o &quot;Cloud services&quot;. Il codice sfrutta diverse librerie, tra cui xml.etree.ElementTree, re e pathlib, oltre a interagire con servizi esterni come un modulo GPT (Generative Pre-trained Transformer) per le API di OpenAI e un client per interagiro con il servizio di analisi del linguaggio naturale di Expert.AI.</p>
+<p>Il flusso di esecuzione inizia con l&#39;acquisizione di una tassonomia relativa a un dominio di interesse mediante l&#39;interazione con il modulo GPT. Successivamente, vengono generate regole linguistiche per ogni ramo della tassonomia, basate sull&#39;analisi del linguaggio naturale di Expert.AI. L&#39;intero processo è orchestrato dalla funzione principale main, che consente all&#39;utente di specificare il dominio di interesse per la generazione automatica di tassonomie e regole.</p>
+<p>Il codice presenta una struttura modulare e un&#39;interessante ibridazione di tecnologie NLP proprietarie di Expert.AI e LLM, facilitando l&#39;automazione della categorizzazione semantica in contesti linguistici specifici.</p>
+<p>Di seguito la documentazione dettagliata divisa per moduli.</p>
+<h2 id="-modulo-rules_generation-py-"><strong>Modulo rules_generation.py:</strong></h2>
+<p>Il file rules_generation.py contiene funzioni per generare regole linguistiche basate su analisi linguistiche di testi specifici. Esso si avvale dell&#39;API della Platform di Expert.AI per l&#39;analisi semantica di testi e include funzioni per la generazione di regole linguistiche specifiche per un dominio.</p>
+<h3 id="funzione-is_relevant_pos">Funzione is_relevant_pos</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>Verifica se un dato token è rilevante in base alla sua parte del discorso (POS). La funzione determina la rilevanza confrontando il tipo di parte del discorso del token con una lista di tipi di POS da ignorare.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>token (dict): Un dizionario rappresentante il token linguistico, con informazioni come tipo di POS (type).</li>
+<li>pos_to_ignore (list, opzionale): Una lista di tipi di POS da ignorare. Se non specificato, vengono utilizzati i tipi di POS predefiniti da ignorare (default_pos_to_ignore).</li>
+</ul>
+<h4 id="output-">Output:</h4>
+<ul>
+<li>True se il token è rilevante, False altrimenti.</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>La funzione verifica se la lista pos_to_ignore è vuota. Se vuota, utilizza la lista predefinita default_pos_to_ignore.</li>
+<li>Confronta il tipo di POS del token con la lista di tipi di POS da ignorare.</li>
+<li>Restituisce True se il tipo di POS del token non è nella lista di quelli da ignorare, altrimenti restituisce False.</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+<span class="hljs-attr">token_to_check</span> = {<span class="hljs-string">"type"</span>: <span class="hljs-string">"NOUN"</span>, <span class="hljs-string">"lemma"</span>: <span class="hljs-string">"dog"</span>}
+
+<span class="hljs-attr">ignore_list</span> = [<span class="hljs-string">"CON"</span>, <span class="hljs-string">"PNT"</span>]
+
+<span class="hljs-attr">result</span> = is_relevant_pos(token_to_check, <span class="hljs-attr">pos_to_ignore=ignore_list)</span>
+
+print(result)
+</code></pre>
+<h4 id="output-dell-esempio-">Output dell&#39;Esempio:</h4>
+<pre><code class="lang-graphql">
+<span class="hljs-literal">True</span>
+</code></pre>
+<h3 id="funzione-get_relevant_parts_of_speech">Funzione get_relevant_parts_of_speech</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>Estrae e restituisce i token rilevanti da una data frase attraverso l&#39;analisi linguistica. La funzione utilizza il servizio di analisi di Essex per ottenere informazioni dettagliate sulla struttura linguistica della frase.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>sentence (str): La frase da analizzare per ottenere i token rilevanti.</li>
+</ul>
+<h4 id="output-">Output:</h4>
+<ul>
+<li>Una lista di token rilevanti estratti dalla frase.</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>La funzione inizia creando un dizionario data contenente i parametri necessari per l&#39;analisi linguistica, come il testo della frase, le analisi richieste (analysis), e le features richieste (features).</li>
+<li>Utilizza il servizio di analisi di Essex (get_essex_analysis) per ottenere i risultati dell&#39;analisi linguistica sulla frase.</li>
+<li>Estrae i token risultanti dall&#39;analisi.</li>
+<li>Filtra i token rilevanti utilizzando la funzione is_relevant_pos.</li>
+<li>Se non ci sono token rilevanti, crea dei token &quot;fabbricati&quot; basati sulle parole della frase che hanno una lunghezza maggiore di 4 caratteri.</li>
+<li>Restituisce la lista completa di token rilevanti.</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+sentence_to_analyze = <span class="hljs-string">"I have a new Galaxy smartphone with seven cameras."</span>
+
+relevant_tokens = get_relevant_parts_of_speech(<span class="hljs-name">sentence_to_analyze</span>)
+
+print(<span class="hljs-name">relevant_tokens</span>)
+</code></pre>
+<h4 id="output-dell-esempio-">Output dell&#39;Esempio:</h4>
+<pre><code class="lang-bash">
+[
+
+{<span class="hljs-attr">"syncon"</span>: <span class="hljs-number">123</span>, <span class="hljs-attr">"score"</span>: <span class="hljs-number">0.75</span>, <span class="hljs-attr">"start"</span>: <span class="hljs-number">10</span>, <span class="hljs-attr">"end"</span>: <span class="hljs-number">15</span>, <span class="hljs-attr">"type"</span>: <span class="hljs-string">"NOUN"</span>, <span class="hljs-attr">"lemma"</span>: <span class="hljs-string">"Galaxy"</span>},
+
+{<span class="hljs-attr">"syncon"</span>: <span class="hljs-number">456</span>, <span class="hljs-attr">"score"</span>: <span class="hljs-number">0.85</span>, <span class="hljs-attr">"start"</span>: <span class="hljs-number">43</span>, <span class="hljs-attr">"end"</span>: <span class="hljs-number">49</span>, <span class="hljs-attr">"type"</span>: <span class="hljs-string">"NUM"</span>, <span class="hljs-attr">"lemma"</span>: <span class="hljs-string">"seven"</span>}
+
+ ... altri token rilevanti ...
+
+]
+</code></pre>
+<p>Questa funzione è fondamentale per estrarre informazioni linguistiche rilevanti da una frase, che possono poi essere utilizzate per la generazione di regole linguistiche personalizzate o per altri scopi specifici del progetto.</p>
+<h3 id="funzione-generate_rule">Funzione generate_rule</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>Genera una regola linguistica basata su una lista di token, un dominio e una descrizione del dominio. La regola viene formattata secondo uno specifico linguaggio di regole di Expert.AI.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>domain (dict): Un dizionario contenente informazioni sul dominio, come il nome (NAME) del dominio e la sua descrizione (DESCRIPTION).</li>
+<li>tokens (list): Una lista di token rilevanti ottenuti da un testo attraverso analisi linguistica.</li>
+<li>domain_description (str): La descrizione del dominio, usata per generare label della regola.</li>
+</ul>
+<h4 id="output-">Output:</h4>
+<ul>
+<li>Una stringa contenente la regola linguistica formattata.</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>La funzione inizia controllando se la lista di token (tokens) non è vuota.</li>
+<li>Se la lista di token non è vuota, inizia la creazione della regola formattata.</li>
+<li>Per ogni token nella lista di token:<ul>
+<li>Verifica se il token ha un syncon valido utilizzando la funzione get_syncon.</li>
+<li>Se il token ha un syncon, determina il tipo di token e aggiunge le informazioni corrispondenti alla regola.<ol>
+<li>Se il token è di un tipo variabile (address, email, company ecc), aggiunge alle alternative all&#39;interno del MANDATORY anche TYPE, oltre agli operand lemma e syncon</li>
+</ol>
+</li>
+<li>Se il token non ha un syncon, crea un operand di tipo PATTERN basato sul lemma del token.</li>
+<li>Aggiunge un operator con distanza arbitraria dopo ogni operand (tranne l&#39;ultimo) per separarli.</li>
+</ul>
+</li>
+<li>La funzione restituisce la regola completa.</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+<span class="hljs-attr">domain_info</span> = {<span class="hljs-string">"NAME"</span>: <span class="hljs-string">"example_domain"</span>, <span class="hljs-string">"DESCRIPTION"</span>: <span class="hljs-string">"Example Domain Description"</span>}
+
+<span class="hljs-attr">sample_tokens</span> = [{<span class="hljs-string">"lemma"</span>: <span class="hljs-string">"example"</span>, <span class="hljs-string">"syncon"</span>: <span class="hljs-number">123</span>, <span class="hljs-string">"type"</span>: <span class="hljs-string">"NOUN"</span>}, {<span class="hljs-string">"lemma"</span>: <span class="hljs-string">"test"</span>, <span class="hljs-string">"syncon"</span>: <span class="hljs-number">456</span>, <span class="hljs-string">"type"</span>: <span class="hljs-string">"COM"</span>}]
+
+<span class="hljs-attr">description</span> = <span class="hljs-string">"Example rule for testing purposes"</span>
+
+<span class="hljs-attr">rule</span> = generate_rule(domain_info, sample_tokens, description)
+
+print(rule)
+</code></pre>
+<h4 id="output-dell-esempio-">Output dell&#39;Esempio:</h4>
+<pre><code class="lang-scss">
+DOMAIN[Example_rule_for_testing_purposes](example_domain) {
+
+MANDATORY{
+
+<span class="hljs-function"><span class="hljs-title">LEMMA</span><span class="hljs-params">(<span class="hljs-string">"example"</span>)</span></span>,
+
+<span class="hljs-function"><span class="hljs-title">SYNCON</span><span class="hljs-params">(<span class="hljs-number">123</span>)</span></span> <span class="hljs-comment">// example</span>
+
+}
+
+\&lt;:<span class="hljs-number">4</span>\&gt;
+
+MANDATORY{
+
+<span class="hljs-function"><span class="hljs-title">LEMMA</span><span class="hljs-params">(<span class="hljs-string">"test"</span>)</span></span>,
+
+<span class="hljs-function"><span class="hljs-title">SYNCON</span><span class="hljs-params">(<span class="hljs-number">456</span>)</span></span> <span class="hljs-comment">// test,</span>
+
+<span class="hljs-function"><span class="hljs-title">TYPE</span><span class="hljs-params">(COM)</span></span>
+
+}
+
+}
+</code></pre>
+<h3 id="funzione-generate_rules_file">Funzione generate_rules_file</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>Genera un file di regole linguistiche per un dominio specifico. La funzione accetta un dominio e una lista di possibili descrizioni, generando un file di regole basato su tali informazioni.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>domain (dict): Un dizionario rappresentante il dominio per il quale generare le regole. Contiene informazioni come il nome del dominio (NAME) e la descrizione (DESCRIPTION).</li>
+<li>possible_descriptions (list, opzionale): Una lista di descrizioni alternative per il dominio. Se non specificato, viene utilizzata solo la descrizione predefinita del dominio.</li>
+</ul>
+<h4 id="output-">Output:</h4>
+<ul>
+<li>Genera un file di regole nel formato specificato.</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>La funzione prepara la lista possible_descriptions, che include la descrizione predefinita del dominio e tutte le descrizioni alternative fornite.</li>
+<li>Per ciascuna descrizione, chiama la funzione generate_rule per ottenere le regole linguistiche corrispondenti.</li>
+<li>Combina tutte le regole in un unico testo nel formato richiesto.</li>
+<li>Scrive il testo delle regole in un file con il nome del dominio nella cartella specificata (rules_out_path).</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+<span class="hljs-attr">example_domain</span> = {<span class="hljs-string">"NAME"</span>: <span class="hljs-string">"example"</span>, <span class="hljs-string">"DESCRIPTION"</span>: <span class="hljs-string">"Sample domain for illustration"</span>}
+
+<span class="hljs-attr">alternative_descs</span> = [<span class="hljs-string">"Additional description 1"</span>, <span class="hljs-string">"Additional description 2"</span>]
+
+generate_rules_file(example_domain, <span class="hljs-attr">possible_descriptions=alternative_descs)</span>
+</code></pre>
+<h3 id="funzione-get_all_domains">Funzione get_all_domains</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>Ottiene una lista di domini da una stringa di tassonomia XML. La funzione analizza la tassonomia per estrarre informazioni sui domini, inclusi il nome e la descrizione di ciascun dominio.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>taxonomy_string (str): Una stringa contenente la rappresentazione XML della tassonomia.</li>
+</ul>
+<h4 id="output-">Output:</h4>
+<ul>
+<li>Una lista di dizionari, ciascuno contenente le informazioni di un dominio. Ogni dizionario include il nome del dominio (NAME) e la descrizione (DESCRIPTION).</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>La funzione utilizza il modulo xml.etree.ElementTree per analizzare la stringa XML e ottenere un elemento radice (root) della tassonomia.</li>
+<li>Itera su tutti gli elementi DOMAIN all&#39;interno della tassonomia, estraendo il nome e la descrizione di ciascun dominio.</li>
+<li>Aggiunge le informazioni del dominio a una lista di dizionari (domains_list).</li>
+<li>Restituisce la lista dei domini ottenuti dalla tassonomia.</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+taxonomy_example = <span class="hljs-string">""</span><span class="hljs-string">"\&lt;DOMAINTREE\&gt;
+
+\&lt;DOMAIN NAME="</span>example1<span class="hljs-string">" DESCRIPTION="</span>Description of Example <span class="hljs-number">1</span><span class="hljs-string">"\&gt;
+
+\&lt;DOMAIN NAME="</span>sub_example1<span class="hljs-string">" DESCRIPTION="</span>Subdomain <span class="hljs-number">1</span> of Example <span class="hljs-number">1</span><span class="hljs-string">" /\&gt;
+
+\&lt;/DOMAIN\&gt;
+
+\&lt;DOMAIN NAME="</span>example2<span class="hljs-string">" DESCRIPTION="</span>Description of Example <span class="hljs-number">2</span><span class="hljs-string">" /\&gt;
+
+\&lt;/DOMAINTREE\&gt;"</span><span class="hljs-string">""</span>
+
+domains_info = get_all_domains(<span class="hljs-name">taxonomy_example</span>)
+
+print(<span class="hljs-name">domains_info</span>)
+</code></pre>
+<p>Questa funzione è utile per estrarre informazioni sui domini da una tassonomia XML, consentendo l&#39;utilizzo successivo di tali informazioni per scopi come la generazione automatica di regole linguistiche o l&#39;analisi di domini specifici.</p>
+<h3 id="funzione-generate_rule_files_per_domain">Funzione generate_rule_files_per_domain</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>Genera regole linguistiche per ciascun dominio nella lista fornita. Per ogni dominio, ottiene alternative descrizioni utilizzando la funzione get_alternative_descriptions e genera file di regole utilizzando la funzione generate_rules_file.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>domains (list): Una lista di dizionari, ciascuno contenente informazioni su un dominio. Ogni dizionario deve avere le chiavi &#39;NAME&#39; e &#39;DESCRIPTION&#39; per rappresentare il nome e la descrizione del dominio.</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>La funzione itera su ciascun dominio nella lista domains.</li>
+<li>Per ogni dominio, stampa un messaggio indicante che sta generando le regole per quel dominio.</li>
+<li>Utilizza la funzione get_alternative_descriptions per ottenere alternative descrizioni per il dominio corrente.</li>
+<li>Chiama la funzione generate_rules_file per generare i file di regole per il dominio, utilizzando le alternative descrizioni ottenute.</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+sample_domains = [
+
+{<span class="hljs-string">"NAME"</span>: <span class="hljs-string">"example1"</span>, <span class="hljs-string">"DESCRIPTION"</span>: <span class="hljs-string">"Description of Example 1"</span>},
+
+{<span class="hljs-string">"NAME"</span>: <span class="hljs-string">"example2"</span>, <span class="hljs-string">"DESCRIPTION"</span>: <span class="hljs-string">"Description of Example 2"</span>}
+
+]
+
+<span class="hljs-function"><span class="hljs-title">generate_rule_files_per_domain</span><span class="hljs-params">(sample_domains)</span></span>
+</code></pre>
+<h3 id="funzione-main">Funzione main</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>La funzione main rappresenta il punto di ingresso principale per il processo di generazione di tassonomia e regole linguistiche. Richiede all&#39;utente di specificare un dominio generico, ottiene la tassonomia associata a quel dominio e genera regole linguistiche per ciascun ramo della tassonomia.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>general_domain (str): Il nome del dominio generico fornito dall&#39;utente.</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>Richiede all&#39;utente di inserire il nome di un dominio generico tramite l&#39;input.</li>
+<li>Ottiene la tassonomia associata al dominio specificato utilizzando la funzione get_taxonomy.</li>
+<li>Estrae informazioni sui sotto-domini dalla tassonomia utilizzando la funzione get_all_domains.</li>
+<li>Chiama la funzione generate_rule_files_per_domain per generare regole linguistiche per ciascun sotto-dominio.</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+<span class="hljs-function"><span class="hljs-title">main</span><span class="hljs-params">(<span class="hljs-string">"cloud services"</span>)</span></span>
+</code></pre>
+<p>Il file contiene inoltre funzioni per la pulizia del testo, la generazione di regole e la gestione delle entità specifiche, oltre a funzioni per ottenere domini da una tassonomia XML e generare regole per ciascun dominio.</p>
+<h2 id="-modulo-gpt-py-"><strong>Modulo gpt.py:</strong></h2>
+<p>Il file gpt.py include funzioni per interagire con l&#39;API di OpenAI, in particolare il modello GPT-3.5-turbo. Le funzioni in questo file sono utilizzate per ottenere alternative di descrizioni e generare una tassonomia dettagliata attraverso interazioni con il modello.</p>
+<h3 id="funzione-get_alternative_descriptions">Funzione get_alternative_descriptions</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>La funzione get_alternative_descriptions utilizza il modello GPT-3.5-turbo per generare una lista di espressioni linguistiche alternative per un concetto specifico fornito come input. La risposta è formattata in modo che ciascuna espressione sia preceduta da un trattino (-) per facilitarne la parserizzazione.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>original_desc (str): Il concetto originale per il quale generare espressioni alternative.</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>Invia una richiesta di completamento al modello GPT-3.5-turbo utilizzando le API di OpenAI.</li>
+<li>Analizza la risposta del modello per ottenere la lista di espressioni alternative.</li>
+<li>Restituisce una lista di espressioni.</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+original_description = <span class="hljs-string">"Apple iPhone 15 features and characteristics"</span>
+
+alternative_expressions = get_alternative_descriptions(<span class="hljs-name">original_description</span>)
+
+print(<span class="hljs-name">alternative_expressions</span>)
+</code></pre>
+<p>Questa funzione ha l&#39;obiettivo di generare variazioni espressive per il concetto di partenza in modo tale da generare regole più varie per un determinato concetto.</p>
+<h3 id="funzione-get_taxonomy">Funzione get_taxonomy</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>La funzione get_taxonomy utilizza il modello GPT-3.5-turbo per generare una tassonomia dettagliata e ramificata di concetti relativi a un dominio specifico fornito come input. La risposta è formattata in formato XML, seguendo uno specifico formato di domini nidificati.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>domain (str): Il dominio per il quale generare la tassonomia.</li>
+<li>minimum_elements (int, predefinito a 70): Il numero minimo di elementi (domini) richiesti nella tassonomia.</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>Invia una richiesta di completamento al modello GPT-3.5-turbo utilizzando le API di OpenAI.</li>
+<li>Gestisce iterativamente le risposte finché la tassonomia generata non termina con \</DOMAINTREE\>.</li>
+<li>Formatta la risposta in formato XML, aggiungendo l&#39;intestazione XML.</li>
+<li>Verifica se il numero di domini generati è uguale o superiore al numero minimo richiesto.</li>
+<li>Se soddisfatto, salva la tassonomia in un file e restituisce la tassonomia generata.</li>
+<li>Se il numero minimo di elementi non è raggiunto, offre all&#39;utente la scelta di mantenere o ritentare la generazione.</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+taxonomy_str = get_taxonomy(<span class="hljs-string">"cloud services"</span>, minimum_elements=10)
+
+print(<span class="hljs-name">taxonomy_str</span>)
+</code></pre>
+<p>Questa funzione semplifica il processo di produzione di una tassonomia dettagliata per un particolare dominio, con la possibilità di specificare il numero minimo di elementi richiesti.</p>
+<h2 id="-modulo-runner_client-py-"><strong>Modulo runner_client.py:</strong></h2>
+<p>Il file runner_client.py fornisce una funzione get_essex_analysis che invia dati a un servizio esterno tramite richieste HTTP POST e restituisce i risultati dell&#39;analisi.</p>
+<p>Questo file è necessario per ottenere le analisi linguistiche usate per generare regole linguistiche nel file rules_generation.py.</p>
+<h3 id="funzione-get_essex_analysis">Funzione get_essex_analysis</h3>
+<h4 id="descrizione-">Descrizione:</h4>
+<p>La funzione get_essex_analysis invia una richiesta HTTP POST al servizio di analisi linguistica con i dati forniti come input. Restituisce l&#39;analisi risultante se la richiesta ha successo (status code 200), altrimenti stampa un messaggio di errore indicando il codice di stato della risposta.</p>
+<h4 id="parametri-">Parametri:</h4>
+<ul>
+<li>data (dict): Dati da inviare nella richiesta POST.</li>
+</ul>
+<h4 id="dettagli-">Dettagli:</h4>
+<ol>
+<li>Utilizza la libreria requests per inviare una richiesta POST al servizio esterno specificato dall&#39;URL con i dati forniti.</li>
+<li>Verifica se la richiesta ha successo controllando il codice di stato HTTP.</li>
+<li>Se la risposta ha successo (status code 200), converte la risposta JSON in un dizionario e restituisce l&#39;analisi risultante.</li>
+<li>Se la risposta non ha successo, stampa un messaggio di errore indicando il codice di stato della risposta.</li>
+</ol>
+<h4 id="esempio-di-utilizzo-">Esempio di Utilizzo:</h4>
+<pre><code class="lang-python">
+data_to_analyze = {
+
+<span class="hljs-string">"projectId"</span>: <span class="hljs-string">"example_project"</span>,
+
+<span class="hljs-string">"text"</span>: <span class="hljs-string">"This is a sample text for analysis."</span>
+
+}
+
+result_analysis = get_essex_analysis(data_to_analyze)
+
+<span class="hljs-function"><span class="hljs-title">print</span><span class="hljs-params">(result_analysis)</span></span>
+</code></pre>
+<p>Questa funzione fornisce un&#39;interfaccia per interagire con il servizio di analisi del linguaggio naturale di Expert.AI.</p>
+</body></html>
