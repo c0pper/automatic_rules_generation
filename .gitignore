@@ -3,3 +3,5 @@ generated_rules/
 __pycache__/
 .env
 vector_db/
+cpk/
+runner-0.0.1.jar

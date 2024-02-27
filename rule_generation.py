@@ -1,3 +1,4 @@
+import shutil
 from runner_client import get_essex_analysis
 import re
 import xml.etree.ElementTree as ET
@@ -141,7 +142,7 @@ def generate_rule(domain, tokens, domain_description, distance_operator):
     else:
         return ""
 
-def generate_rules_file(domain, distance_operator, possible_descriptions: list = None):
+def generate_rules_file(domain, distance_operator, possible_descriptions: list = None, domain_directory=None):
     if not possible_descriptions:
         possible_descriptions = [domain["DESCRIPTION"]]
     else:
@@ -157,7 +158,7 @@ def generate_rules_file(domain, distance_operator, possible_descriptions: list =
 {nl.join(rules)}
 }}
     """
-    with open(f"{rules_out_path}/{domain['NAME']}.cr", "w", encoding="utf8") as f:
+    with open(f"{domain_directory}/auto_{domain['NAME']}.cr", "w", encoding="utf8") as f:
         f.write(text)
 
 
@@ -175,7 +176,7 @@ def get_all_domains(taxonomy_string):
     return domains_list
 
 
-def generate_rule_files_per_domain(domains, distance_operator):
+def generate_rule_files_per_domain(domains, distance_operator, domain_directory):
     generated_files_so_far = [f.stem for f in Path("generated_rules").glob("*")]
     for idx, d in enumerate(domains):
         if d["NAME"] not in generated_files_so_far:
@@ -183,31 +184,72 @@ def generate_rule_files_per_domain(domains, distance_operator):
             if description not in "no description available":
                 print(f"[+] Generating rules for domain {d['DESCRIPTION']} ({idx + 1} / {len(domains)})")
                 alternative_descriptions = get_alternative_descriptions(d["DESCRIPTION"])
-                generate_rules_file(d, distance_operator, possible_descriptions=alternative_descriptions)
+                generate_rules_file(d, distance_operator, possible_descriptions=alternative_descriptions, domain_directory=domain_directory)
 
 
-def write_imports(domains, imports_path):
+def write_imports(imports_path):
     if isinstance(imports_path, str):
         imports_path = Path(imports_path)
-    all_files_in_folder = [f for f in imports_path.parent.glob("*")]
+    all_files_in_folder = [f for f in imports_path.parent.glob("auto_*")]
     if imports_path.name not in [f.name for f in all_files_in_folder]:
-        with open(f"{imports_path}", "a", encoding="utf8") as f:  # generated_rules/main_cat_pythonic_rules_essex.cr
+        with open(f"{imports_path}", "a", encoding="utf8") as f:  
             for file in all_files_in_folder:
                 f.write(f"IMPORT \"{file.name}\"\n")
+
+
+def clean_domain_directory(domain_directory):
+    for file_path in domain_directory.glob("auto_*"):
+        try:
+            file_path.unlink()  # Remove the file
+            print(f"[-] Removed: {file_path}")
+        except Exception as e:
+            print(f"Error removing {file_path}: {e}")
+
+
+def refresh_cpkrules_directory(cpkrules_directory):
+    for file_path in cpkrules_directory.glob("auto_*"):
+        try:
+            file_path.unlink()  # Remove the file
+            print(f"[-] Removed: {file_path}")
+        except Exception as e:
+            print(f"Error removing {file_path}: {e}")
+    with open(cpkrules_directory / "main.cr", "w", encoding="utf8"):
+        pass
+
+
+def copy_rules_to_cpkrules_directory(domain_directory, cpkrules_directory):
+    auto_files = list(domain_directory.glob("auto_*"))
+    for auto_file in auto_files:
+        shutil.copy(auto_file, cpkrules_directory)
+        print(f"Copied: {auto_file} to cpk/rules directory")
 
         
 # domains = [{"NAME": "1", "DESCRIPTION": "Apple iPhone features and characteristics"}]
 def main():
-    imports_path = "generated_rules/main_cat_pythonic_rules_essex.cr"
     from_what = input("Vuoi generare da file tassonomia XML o da dominio generico? t = tassonomia d = dominio generico (t/d): ").lower()
     distance_operator = input("Distance operator (numero): ")
+
     if from_what == "d":
         general_domain = input("Per quale dominio vuoi generare tassonomia e regole? (Es. 'Auotomotive', 'Cloud services', etc...)\n")
-        taxonomy_str = get_taxonomy(general_domain, minimum_elements=10)
+        domain_directory = rules_out_path.joinpath(general_domain)
+        domain_directory.mkdir(exist_ok=True)
+        clean_domain_directory(domain_directory)
+
+        taxonomy_str = get_taxonomy(general_domain, minimum_elements=10, domain_directory=domain_directory)
         domains = get_all_domains(taxonomy_str)
-        write_imports(domains, imports_path)
-        generate_rule_files_per_domain(domains, distance_operator)
+        
+        generate_rule_files_per_domain(domains, distance_operator, domain_directory)
+        write_imports(domain_directory / f"main_cat_{general_domain}.cr")
+
+        # Copy files starting with "auto_" to cpk/rules directory
+        cpkrules_directory = Path("cpk/rules" / general_domain)
+        cpkrules_directory.mkdir(exist_ok=True)
+        refresh_cpkrules_directory(cpkrules_directory)
+
+        copy_rules_to_cpkrules_directory(domain_directory, cpkrules_directory)
+        
     elif from_what == "t":
+        imports_path = "generated_rules/main_cat_pythonic_rules_essex.cr"
         tax_file = input("Percorso tassonomia xml:\n")
         with open(tax_file, "r", encoding="utf8") as f:
             taxonomy_str = f.read()
