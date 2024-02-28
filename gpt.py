@@ -2,6 +2,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import xml.etree.ElementTree as ET
 import time
+from helper_funcs import clean_text
 
 load_dotenv()
 
@@ -86,7 +87,8 @@ Rispondi SEMPRE in XML seguendo il seguente formato:
     </DOMAIN>
 </DOMAINTREE>
 
-Give me at least {str(minimum_elements)} elements
+Fornisci almeno {str(minimum_elements)} elementi.
+Usa la lingua ITALIANA.
     """}
         ]
         )
@@ -97,6 +99,14 @@ Give me at least {str(minimum_elements)} elements
             content = xml_head + content
             try:
                 root = ET.fromstring(content)
+
+                for domain in root.findall('.//DOMAIN'):
+                    name_attribute = domain.get('NAME')
+                    cleaned_name = clean_text(name_attribute)
+                    domain.set('NAME', cleaned_name)
+
+                content = ET.tostring(root, encoding="unicode")
+                
                 n_domains = len(root.findall('.//DOMAIN'))
                 if n_domains >= minimum_elements:
                     save_tax(content, domain_directory)
@@ -106,6 +116,7 @@ Give me at least {str(minimum_elements)} elements
                     keep_it = input(f"[?] Generated taxonomy with {str(n_domains)} domains. Keep it or retry? k/r ").lower()
                     if keep_it == "k":
                         save_tax(content, domain_directory)
+                        return content
                     elif keep_it == "r":
                         content = ""
                         print("[-] Taxonomy insufficient, if this keeps failing try reducing the minimum elements parameter. Retrying...")

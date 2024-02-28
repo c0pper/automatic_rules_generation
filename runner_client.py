@@ -1,23 +1,29 @@
 import requests
 import time
 
-url = "http://localhost:8087/analyze"
 
 headers = {
     "Accept": "*/*",
     "Content-Type": "application/json",
 }
 
-def get_essex_analysis(data):
-    for _ in range(5):  # Try 5 times
-        response = requests.post(url, json=data, headers=headers)
+def get_essex_analysis(data, port):
+    url = f"http://localhost:{str(port)}/analyze"
+    max_retries = 10
+    retry_delay = 2  # seconds
 
-        if response.status_code == 200:
-            response_json = response.json()
-            return response_json
-        else:
-            print("Error:", response.status_code)
-        
-        time.sleep(2)  # Wait for 2 seconds before the next attempt
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(url, json=data, headers=headers)
+            if response.status_code == 200:
+                response_json = response.json()
+                return response_json
+            else:
+                print(f"Error ({response.status_code}): {response.text}")
 
-    raise ValueError("Failed after 5 attempts.")
+            time.sleep(retry_delay)
+        except requests.exceptions.ConnectionError as e:
+            print(f"[*] Connection error on attempt {attempt}/{max_retries}: {e}")
+            time.sleep(retry_delay)
+
+    raise ValueError(f"Failed after {max_retries} attempts.")
