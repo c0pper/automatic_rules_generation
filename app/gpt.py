@@ -59,37 +59,48 @@ def save_tax(content, domain_directory):
         tax.write(content)
 
 
-def get_taxonomy(domain, minimum_elements=70, domain_directory=None):
+def get_taxonomy(domain, minimum_elements=70, domain_directory=None, api=False):
     if not domain_directory:
         domain_directory = "generated_rules"
     print(f"[+] Generating Taxonomy with at least {str(minimum_elements)} domains...")
     content = ""
 
+
+
+    system_prompt = """
+Genera una tassonomia dettagliata e ramificata di concetti STRETTAMENTE relativi al dominio fornito dall'utente. 
+Rispondi SEMPRE in XML seguendo il seguente formato:
+<DOMAINTREE>
+    <DOMAIN NAME="concept id" DESCRIPTION="name of the concept">
+        <DOMAIN NAME="concept id" DESCRIPTION="name of the concept" />
+    </DOMAIN>
+</DOMAINTREE>
+    """
+
+    user_prompt = f"""
+Genera una tassonomia dettagliata e ramificata di concetti STRETTAMENTE relativi al dominio seguente: 
+{domain.upper()}
+
+### Altre indicazioni:
+Rispondi SEMPRE in linguaggio XML seguendo il seguente formato:
+<DOMAINTREE>
+    <DOMAIN NAME="concept id" DESCRIPTION="name of the concept">
+        <DOMAIN NAME="concept id" DESCRIPTION="name of the concept" />
+    </DOMAIN>
+</DOMAINTREE>
+---
+Fornisci almeno {str(minimum_elements)} elementi.
+---
+Usa la lingua ITALIANA."""
+    print(user_prompt)
+
+
     while not content.endswith("</DOMAINTREE>"):
         completion = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": """
-Genera una tassonomia dettagliata e ramificata di concetti relativi al dominio fornito dall'utente. 
-Rispondi SEMPRE in XML seguendo il seguente formato:
-<DOMAINTREE>
-    <DOMAIN NAME="concept id" DESCRIPTION="name of the concept">
-        <DOMAIN NAME="concept id" DESCRIPTION="name of the concept" />
-    </DOMAIN>
-</DOMAINTREE>
-    """},
-            {"role": "user", "content": f"""
-Genera una tassonomia dettagliata e ramificata di concetti relativi al dominio seguente: {domain}\n\n### Rispondi SEMPRE in formato XML.
-Rispondi SEMPRE in XML seguendo il seguente formato:
-<DOMAINTREE>
-    <DOMAIN NAME="concept id" DESCRIPTION="name of the concept">
-        <DOMAIN NAME="concept id" DESCRIPTION="name of the concept" />
-    </DOMAIN>
-</DOMAINTREE>
-
-Fornisci almeno {str(minimum_elements)} elementi.
-Usa la lingua ITALIANA.
-    """}
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
         ]
         )
 
@@ -105,23 +116,36 @@ Usa la lingua ITALIANA.
                     cleaned_name = clean_text(name_attribute)
                     domain.set('NAME', cleaned_name)
 
+                    description_attribute = domain.get('DESCRIPTION')
+                    if description_attribute is None:
+                        print("[-] DESCRIPTION attribute not found for a DOMAIN element. Regenerating...")
+                        content = ""
+                        break
+
                 content = ET.tostring(root, encoding="unicode")
+                xml_head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+                content = xml_head + content
                 
                 n_domains = len(root.findall('.//DOMAIN'))
-                if n_domains >= minimum_elements:
+                if n_domains >= int(minimum_elements):
                     save_tax(content, domain_directory)
                     print(f"[+] Generated taxonomy with {str(n_domains)} domains")
                     return content
                 else:
-                    keep_it = input(f"[?] Generated taxonomy with {str(n_domains)} domains. Keep it or retry? k/r ").lower()
-                    if keep_it == "k":
-                        save_tax(content, domain_directory)
-                        return content
-                    elif keep_it == "r":
+                    if not api:
+                        keep_it = input(f"[?] Generated taxonomy with {str(n_domains)} domains. Keep it or retry? k/r ").lower()
+                        if keep_it == "k":
+                            save_tax(content, domain_directory)
+                            return content
+                        elif keep_it == "r":
+                            content = ""
+                            print(f"[-] Taxonomy insufficient ({str(n_domains)} domains), if this keeps failing try reducing the minimum elements parameter. Retrying...")
+                    else:
                         content = ""
-                        print("[-] Taxonomy insufficient, if this keeps failing try reducing the minimum elements parameter. Retrying...")
+                        print(f"[-] Taxonomy insufficient ({str(n_domains)} domains), if this keeps failing try reducing the minimum elements parameter. Retrying...")
             except ET.ParseError as e:
                 content = ""
+                print(e)
                 print(f"[-] Unable to parse the taxonomy response.\n\nError:\n{e}\n\n Retrying...")
         else:
             print("[-] Taxonomy generation failed, if this keeps failing try reducing the minimum elements parameter. Retrying...")

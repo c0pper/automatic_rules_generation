@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/popover"
 import { Textarea } from './ui/textarea';
 import { setSelectedDomain } from '../src/features/domain/domainSlice';
+import { Badge } from './ui/badge';
+import { setHighlightsIndexes } from '@/src/features/highlightsIndexes/highlightsIndexesSlice';
 
 
 
@@ -52,6 +54,7 @@ const Analyzer = ({ fetchAvailableDomains }) => {
     }
 
     const handleAnalyze = async () => {
+      dispatch(setHighlightsIndexes([]))
       try {
         const response = await axios.post('http://localhost:5000/analyze_text', {
           selected_domain: selectedDomainState,
@@ -81,16 +84,18 @@ const Analyzer = ({ fetchAvailableDomains }) => {
     return (
       <div>
         <div className='grid grid-cols-6 gap-4'>
-          <div className='flex align-center items-center col-span-3 '>
-            <div className='flex flex-col'>
-              <Label>
-              Current taxonomy: {currentCartridge}
-              </Label>
-              <Label>
-              Select available taxonomy:
-              </Label>
-                  
-              <Popover open={open} onOpenChange={setOpen}>
+          <div className='flex flex-col col-span-1 items-center border rounded-md p-4'>
+            <Label className="mt-4 mb-2">
+            Tassonomia selezionata:
+            </Label>
+            <Badge className="mb-4 mt-2">
+            {currentCartridge}
+            </Badge>
+            <Label className="my-4">
+            Select available taxonomy:
+            </Label>
+                
+            <Popover className="my-4" open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
                 <Button
                 variant="outline"
@@ -129,18 +134,16 @@ const Analyzer = ({ fetchAvailableDomains }) => {
                 </CommandGroup>
                 </Command>
               </PopoverContent>
-              </Popover>
-            </div>
+            </Popover>
+            <Button className="my-4" onClick={handleSwitchCartridge}>Switch Taxonomy</Button>
+          </div>   
 
-            <Button onClick={handleSwitchCartridge}>Switch Taxonomy</Button>
-          </div>
-
-          <div className='col-span-3'>
+          <div className='col-span-5 flex-col '>
             <Label>
             Text Input:
             </Label>
             <Textarea
-                className=""
+                className=" h-72 my-4"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
             />

@@ -41,34 +41,40 @@ const Generate = ({ fetchAvailableDomains }) => {
   };
 
   return (
-    <div>
-        <Label>
-            General Domain:
-        </Label>
-        <Input
-            type="text"
-            placeholder="Automotive / Cloud services / Food delivery"
-            value={generalDomain}
-            onChange={(e) => setGeneralDomain(e.target.value)}
-        />
+    <div className='grid grid-cols-8 gap-4'>
+        <div className='col-span-6 flex-col justify-start items-start  '>
+          <Label>
+              General Domain:
+          </Label>
+          <Input
+              type="text"
+              placeholder="Automotive / Cloud services / Food delivery"
+              value={generalDomain}
+              onChange={(e) => setGeneralDomain(e.target.value)}
+          />
+        </div>
 
-        <Label>
-            Minimum Tax Elements:
-        </Label>
-        <Input
-          type="number"
-          value={minimumTaxElements}
-          onChange={handleTaxElementsChange}
-        />
-
-        <Label>
-            Distance Operator:
-        </Label>
-        <Input
+        <div>
+          <Label>
+              Minimum Tax Elements:
+          </Label>
+          <Input
             type="number"
-            value={distanceOperator}
-            onChange={(e) => setDistanceOperator(parseInt(e.target.value, 10))}
-        />
+            value={minimumTaxElements}
+            onChange={handleTaxElementsChange}
+          />
+        </div>
+
+        <div>
+          <Label>
+              Distance Operator:
+          </Label>
+          <Input
+              type="number"
+              value={distanceOperator}
+              onChange={(e) => setDistanceOperator(parseInt(e.target.value, 10))}
+          />
+        </div>
 
         <Button onClick={handleGenerate}>Generate</Button>
     </div>

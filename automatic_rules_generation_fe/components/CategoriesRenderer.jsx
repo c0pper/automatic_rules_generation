@@ -24,7 +24,7 @@ const CategoriesRenderer = () => {
     {
       analysisResult.categories ? (
         <>
-          <Label >Analysis Result</Label>  
+          <Label >Categories</Label>  
             <div className="flex flex-col border rounded-md p-2 my-4 items-start">
                 {
                     analysisResult.categories.map((item, index) => (

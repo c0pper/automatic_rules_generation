@@ -46,7 +46,7 @@ def generate_rules():
         rule_generator.kill_runner()
         rule_generator.start_runner(mode="generation")
 
-        taxonomy_str = gpt.get_taxonomy(general_domain, minimum_elements=minimum_tax_elements, domain_directory=rule_generator.domain_directory)
+        taxonomy_str = gpt.get_taxonomy(general_domain, minimum_elements=minimum_tax_elements, domain_directory=rule_generator.domain_directory, api=True)
         rule_generator.domains = rule_generator.get_all_domains(taxonomy_str)
 
         rule_generator.generate_rule_files_per_domain()
@@ -57,6 +57,7 @@ def generate_rules():
 
         return jsonify({'message': 'Rules generated successfully.'}), 200
     except Exception as e:
+        print({'error': str(e)})
         return jsonify({'error': str(e)}), 500
 
 @app.route('/analyze_text', methods=['POST'])
