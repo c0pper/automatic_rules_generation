@@ -1,6 +1,6 @@
 #  file per rigenerare le regole con i syncon giusti (esterni) usando le alternative di chatgpt pregenerate dalla prima esecuzione
 
-from rule_generation import get_all_domains, write_imports, generate_rules_file, get_syncon, variable_types, all_digits
+from rule_generation_old import get_all_domains, write_imports, generate_rules_file, get_syncon, variable_types, all_digits
 from pathlib import Path
 import re
 

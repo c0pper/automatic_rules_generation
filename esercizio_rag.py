@@ -1,5 +1,5 @@
 import os
-from rule_generation import get_all_domains
+from rule_generation_old import get_all_domains
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma

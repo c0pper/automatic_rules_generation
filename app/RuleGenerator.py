@@ -24,7 +24,7 @@ class RuleGenerator:
                                'WEB', 'WRK']
         self.cpkrules_directory = Path("cpk/rules")
         self.rules_out_path = Path("generated_rules")
-        self.cmd_file_path = "cpk_runner.cmd"
+        self.runner_process = None  
         self.disambiguator_port = 8087
         self.analysis_port = 8030
 
@@ -185,8 +185,11 @@ class RuleGenerator:
                     alternative_descriptions = get_alternative_descriptions(d["DESCRIPTION"])
                     self.generate_rules_file(d, self.distance_operator, possible_descriptions=alternative_descriptions, domain_directory=self.domain_directory)
 
-    def write_imports(self):
-        imports_path = self.cpkrules_domain_directory / f"main_cat_{self.general_domain}.cr"
+    def write_imports(self, domain=None):
+        if not domain:
+            imports_path = self.cpkrules_domain_directory / f"main_cat_{self.general_domain}.cr"
+        else:
+            imports_path = self.cpkrules_domain_directory / f"main_cat_{domain}.cr"
         if isinstance(imports_path, str):
             imports_path = Path(imports_path)
         all_files_in_folder = [f for f in self.cpkrules_domain_directory.glob("auto_*")]
@@ -214,7 +217,10 @@ class RuleGenerator:
         with open(self.cpkrules_directory / "main.cr", "w", encoding="utf8"):
             pass
 
-    def copy_rules_to_cpkrules_domain_directory(self):
+    def copy_rules_to_cpkrules_domain_directory(self, domain=None):
+        if not domain:
+            domain = self.general_domain
+
         auto_files = list(self.domain_directory.glob("auto_*"))
         for auto_file in auto_files:
             with open(auto_file, "r", encoding="utf8") as inp:
@@ -224,7 +230,7 @@ class RuleGenerator:
                 print(f"Copied: {auto_file} to {self.cpkrules_domain_directory} directory")
         
         with open(Path(self.cpkrules_directory / "main.cr"), "w", encoding="utf8") as m:
-            m.write(f"IMPORT \"{self.general_domain}/main_cat_{self.general_domain}.cr\"")
+            m.write(f"IMPORT \"{domain}/main_cat_{domain}.cr\"")
         
         
         taxonomy_file_path = self.domain_directory / "taxonomy.xml"
@@ -238,8 +244,11 @@ class RuleGenerator:
         else:
             raise FileNotFoundError("No taxonomy file found in generated rules/domain directory")
 
-
-    def start_runner(self):
+    def start_runner(self, mode):
+        if mode == "generation":
+            port = 8087
+        elif mode == "analysis":
+            port = 8030
         try:
             # subprocess.Popen(['cmd', '/c', cmd_file_path], shell=True)
 
@@ -248,7 +257,7 @@ class RuleGenerator:
                 '-jar',
                 'runner-0.0.1.jar',
                 '--operation.folder=cpk',
-                f'--PORT_BINDING={str(self.analysis_port)}'
+                f'--PORT_BINDING={str(port)}'
             ]
             # Im using subprocess.Popen for non-blocking execution
             self.runner_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -256,31 +265,34 @@ class RuleGenerator:
             print(f"Error executing CMD file: {e}")
 
     def kill_runner(self):
-        try:
-            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-                if proc.info['name'] == 'cmd.exe':
-                    for l in proc.info['cmdline']:
-                        if self.cmd_file_path in l:
-                            process = psutil.Process(proc.info['pid'])
-                            process.terminate()
-                            print(f"[-] Terminated CMD process for {self.cmd_file_path}.")
-        except Exception as e:
-            print(f"Error terminating CMD process: {e}")
+        if self.runner_process:
+            try:
+                self.runner_process.terminate()
+                self.runner_process.wait()  # Wait for the process to finish
+                print("[-] Terminated runner process.")
+            except Exception as e:
+                print(f"Error terminating runner process: {e}")
 
 
-    def get_categories(self, text_path):
+    def get_categories(self, text):
         print("[+] Starting again with the newly generated rules...")
-        self.start_runner(cmd_file_path="cpk_runner2.cmd")
+        self.start_runner(mode="analysis")
 
-        if isinstance(text_path, str):
-            text_path = Path(text_path)
+        if isinstance(text, str):
+            text_path = Path(text)
+            is_file_path = text_path.is_file()
 
-        with open(text_path, "r", encoding="utf8") as f:
-            text = f.read()
+            if is_file_path:
+                with open(text_path, "r", encoding="utf8") as f:
+                    text_content = f.read()
+            else:
+                text_content = text
+        else:
+            raise ValueError("Invalid input for 'text'. It should be either a file path (str) or text content (str).")
 
         data = {
             "projectId": "automazione",
-            "text": text,
+            "text": text_content,
             "analysis": [
                 "ENTITIES",
                 "DISAMBIGUATION",
@@ -288,35 +300,47 @@ class RuleGenerator:
             ],
             "features": [
                 "POSITIONS_SYNCHRONIZATION",
+                "EXTRA_DATA",
+                "EXTERNAL_IDS"
             ]
         }
-        
+
         analysis = get_essex_analysis(data, self.analysis_port)["result"]
 
         output_directory = self.cpkrules_directory.parent / self.OUTPUT_DIRECTORY
-        output_file_path = output_directory / f"{text_path.stem}_analysis.json"
+        if is_file_path:
+            output_file_path = output_directory / f"{text_path.stem}_analysis.json"
+        else:
+            # Use the first 5 words of the text as part of the output file name
+            file_name_prefix = "_".join(text_content.split()[:5])
+            output_file_path = output_directory / f"{file_name_prefix}_analysis.json"
+
         with open(output_file_path, "w", encoding="utf8") as out:
             json.dump(analysis, out, indent=4)
+
         print(f"[+] Analysis result dumped to: {output_file_path}")
+        return analysis
+    
 
+    def switch_cartridge(self, selected_domain):
+        self.refresh_cpkrules_directory()
+        self.cpkrules_domain_directory = self.cpkrules_directory / selected_domain
+        self.cpkrules_domain_directory.mkdir(exist_ok=True)
 
-    def main(self):
-        from_what = input("Vuoi generare da file tassonomia XML o da dominio generico? t = tassonomia d = dominio generico (t/d): ").lower()
-        self.distance_operator = input("Distance operator (numero): ")
+        self.domain_directory = self.rules_out_path.joinpath(selected_domain.lower())
 
-        if from_what == "d":
-            # self.start_domain_based_generation()
+        # Switch rules           
+        self.copy_rules_to_cpkrules_domain_directory(domain=selected_domain)
+        self.write_imports(domain=selected_domain)
+        
+        
 
-            # text_path = input("Path to text:")
-            text_path = "testo_test.txt"
-            self.get_categories(text_path)
-        elif from_what == "t":
-            self.start_taxonomy_based_generation()
+    
 
     def start_domain_based_generation(self):
 
         self.general_domain = input("Per quale dominio vuoi generare tassonomia e regole? (Es. 'Auotomotive', 'Cloud services', etc...)\n")
-        self.domain_directory = self.rules_out_path.joinpath(self.general_domain)
+        self.domain_directory = self.rules_out_path.joinpath(self.general_domain.lower())
         self.domain_directory.mkdir(exist_ok=True)
         self.clean_domain_directory()
 
@@ -330,7 +354,7 @@ class RuleGenerator:
         else:
             minimum_tax_elements = int(minimum_tax_elements)
         
-        self.start_runner()
+        self.start_runner(mode="generation")
 
         taxonomy_str = get_taxonomy(self.general_domain, minimum_elements=minimum_tax_elements, domain_directory=self.domain_directory)
         self.domains = self.get_all_domains(taxonomy_str)
@@ -341,13 +365,6 @@ class RuleGenerator:
 
         self.kill_runner()  # kill basic cpk in order to start again with the newly generated rules
 
-        
-
-        
-
-
-
-
 
     # def start_taxonomy_based_generation(self, distance_operator):
     #     imports_path = "generated_rules/main_cat_pythonic_rules_essex.cr"
@@ -357,6 +374,20 @@ class RuleGenerator:
     #     domains = self.get_all_domains(taxonomy_str)
     #     self.write_imports(domains, imports_path)
     #     self.generate_rule_files_per_domain(domains, distance_operator)
+
+
+    def main(self):
+        from_what = input("Vuoi generare da file tassonomia XML o da dominio generico? t = tassonomia d = dominio generico (t/d): ").lower()
+        self.distance_operator = input("Distance operator (numero): ")
+
+        if from_what == "d":
+            self.start_domain_based_generation()
+
+            # text_path = input("Path to text:")
+            text = "testo_test.txt"
+            self.get_categories(text)
+        elif from_what == "t":
+            self.start_taxonomy_based_generation()
 
 
 if __name__ == "__main__":
