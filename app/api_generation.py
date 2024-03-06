@@ -8,6 +8,7 @@ from pathlib import Path
 app = Flask(__name__)
 CORS(app)
 rule_generator = RuleGenerator()
+# rule_generator.start_runner(mode="analysis")
 
 
 @app.route('/get_available_domains', methods=['GET'])
@@ -43,8 +44,10 @@ def generate_rules():
         rule_generator.cpkrules_domain_directory = rule_generator.cpkrules_directory / general_domain
         rule_generator.cpkrules_domain_directory.mkdir(exist_ok=True)
 
-        rule_generator.kill_runner()
-        rule_generator.start_runner(mode="generation")
+        if rule_generator.current_cpk_mode != "generation":
+            print("[+] Starting cpk in generation mode...")
+            rule_generator.kill_runner()
+            rule_generator.start_runner(mode="generation")
 
         taxonomy_str = gpt.get_taxonomy(general_domain, minimum_elements=minimum_tax_elements, domain_directory=rule_generator.domain_directory, api=True)
         rule_generator.domains = rule_generator.get_all_domains(taxonomy_str)
@@ -54,6 +57,7 @@ def generate_rules():
         rule_generator.write_imports()
 
         rule_generator.kill_runner()  # kill basic cpk to start again with the newly generated rules
+        rule_generator.start_runner(mode="analysis")
 
         return jsonify({'message': 'Rules generated successfully.'}), 200
     except Exception as e:
@@ -72,8 +76,11 @@ def analyze_text():
         selected_domain = request_data.get('selected_domain')
         text_input = request_data.get('text_input')
         
+        if rule_generator.current_cpk_mode != "analysis":
+            rule_generator.kill_runner()
+            rule_generator.start_runner(mode="analysis")
+            print("[+] Starting cpk in analysis mode...")
         analysis = rule_generator.get_categories(text_input)
-        rule_generator.kill_runner()
 
         return jsonify({'analysis': analysis, 'selected_domain': selected_domain}), 200
     except Exception as e:

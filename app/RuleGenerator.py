@@ -1,5 +1,7 @@
 import json
+import os
 import shutil
+import signal
 import subprocess
 import time
 import psutil
@@ -27,6 +29,7 @@ class RuleGenerator:
         self.runner_process = None  
         self.disambiguator_port = 8087
         self.analysis_port = 8030
+        self.current_cpk_mode = None
 
     def is_relevant_pos(self, token, pos_to_ignore=None):
         if not pos_to_ignore:
@@ -250,8 +253,6 @@ class RuleGenerator:
         elif mode == "analysis":
             port = 8030
         try:
-            # subprocess.Popen(['cmd', '/c', cmd_file_path], shell=True)
-
             command = [
                 'java',
                 '-jar',
@@ -259,24 +260,28 @@ class RuleGenerator:
                 '--operation.folder=cpk',
                 f'--PORT_BINDING={str(port)}'
             ]
-            # Im using subprocess.Popen for non-blocking execution
+
             self.runner_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.current_cpk_mode = mode
         except Exception as e:
             print(f"Error executing CMD file: {e}")
 
     def kill_runner(self):
         if self.runner_process:
             try:
-                self.runner_process.terminate()
-                self.runner_process.wait()  # Wait for the process to finish
+                process = psutil.Process(self.runner_process.pid)
+                for proc in process.children(recursive=True):
+                    proc.kill()
+                try:
+                    process.kill()
+                except:
+                    pass
                 print("[-] Terminated runner process.")
             except Exception as e:
                 print(f"Error terminating runner process: {e}")
 
 
     def get_categories(self, text):
-        print("[+] Starting again with the newly generated rules...")
-        self.start_runner(mode="analysis")
 
         if isinstance(text, str):
             text_path = Path(text)

@@ -40,6 +40,17 @@ const Generate = ({ fetchAvailableDomains }) => {
     }
   };
 
+  const handleDistanceOpChange = (e) => {
+    const inputValue = e.target.value;
+
+    // If the input is empty or a valid number up to 70, allow it
+    if (Number(inputValue) >= 0) {
+      setDistanceOperator(inputValue);
+    } else {
+      console.log('Invalid input. Enter a number higher than 0.');
+    }
+  };
+
   return (
     <div className='grid grid-cols-8 gap-4'>
         <div className='col-span-6 flex-col justify-start items-start  '>
@@ -63,6 +74,10 @@ const Generate = ({ fetchAvailableDomains }) => {
             value={minimumTaxElements}
             onChange={handleTaxElementsChange}
           />
+          {minimumTaxElements <= 0 ?
+          <div className=' text-xs text-red-600'>Must be higher than 0</div>:
+          undefined
+          }
         </div>
 
         <div>
@@ -72,8 +87,13 @@ const Generate = ({ fetchAvailableDomains }) => {
           <Input
               type="number"
               value={distanceOperator}
-              onChange={(e) => setDistanceOperator(parseInt(e.target.value, 10))}
+              // onChange={(e) => setDistanceOperator(parseInt(e.target.value, 10))}
+              onChange={handleDistanceOpChange}
           />
+          {distanceOperator <= 0 ?
+          <div className=' text-xs text-red-600'>Must be higher than 0</div>:
+          undefined
+          }
         </div>
 
         <Button onClick={handleGenerate}>Generate</Button>
