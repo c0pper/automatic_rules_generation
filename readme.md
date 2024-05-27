@@ -1,3 +1,5 @@
+![Demo of the analysis](gifs/analysis_demo.gif)
+
 ## Introduzione
 
 Il seguente documento illustra il funzionamento di un insieme di moduli Python utilizzati per l'automazione del processo di generazione di tassonomia e regole linguistiche per ogni ramo della stessa a partire da un dominio generico come può essere "Automotive" o "Cloud services". Il codice sfrutta diverse librerie, tra cui xml.etree.ElementTree, re e pathlib, oltre a interagire con servizi esterni come un modulo GPT (Generative Pre-trained Transformer) per le API di OpenAI e un client per interagiro con il servizio di analisi del linguaggio naturale di Expert.AI.
