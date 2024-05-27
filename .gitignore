@@ -1,4 +1,6 @@
 venv/
+.venv/
+.vscode/
 generated_rules/
 __pycache__/
 .env
