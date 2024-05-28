@@ -51,7 +51,7 @@ function App() {
             <div className='col-span-6'>
               <TextRenderer />
             </div>
-            <div className='col-span-2 flex justify-center'>
+            <div className='col-span-2'>
               <CategoriesRenderer />
             </div>
           </div>

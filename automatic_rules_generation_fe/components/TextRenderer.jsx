@@ -90,7 +90,7 @@ const TextRenderer = () => {
       {analysisResult ? (
         <div>
           <Label>Text content</Label>
-          <ScrollArea className="rounded-md border p-4 h-full my-4">
+          <ScrollArea className="rounded-md border p-4 h-lvh my-4">
             {renderedContent}
           </ScrollArea>
         </div>

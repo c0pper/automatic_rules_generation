@@ -317,7 +317,8 @@ class RuleGenerator:
             output_file_path = output_directory / f"{text_path.stem}_analysis.json"
         else:
             # Use the first 5 words of the text as part of the output file name
-            file_name_prefix = "_".join(text_content.split()[:5])
+            file_name_prefix_uncleaned = "_".join(text_content.split()[:5])
+            file_name_prefix = re.sub(r'[^a-zA-Z0-9]', '', file_name_prefix_uncleaned)
             output_file_path = output_directory / f"{file_name_prefix}_analysis.json"
 
         with open(output_file_path, "w", encoding="utf8") as out:
